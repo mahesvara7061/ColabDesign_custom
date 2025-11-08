@@ -66,12 +66,21 @@ def dict_to_str(x, filt=None, keys=None, ok=None, print_str=None, f=2):
   for k in keys:
     if k in x and (filt.get(k,True) or k in ok):
       v = x[k]
-      if isinstance(v,float):
-        if int(v) == v:
-          print_str += f" {k} {int(v)}"
+      # Safely handle numeric scalars including numpy/jax scalars and non-finite values
+      try:
+        # Attempt to coerce to a Python float
+        vf = float(v)
+        # Check finiteness before any int conversion (int(NaN) would raise)
+        if not np.isfinite(vf):
+          print_str += f" {k} nan"
         else:
-          print_str += f" {k} {v:.{f}f}"
-      else:
+          # Use is_integer to detect integer-valued floats
+          if hasattr(vf, 'is_integer') and vf.is_integer():
+            print_str += f" {k} {int(vf)}"
+          else:
+            print_str += f" {k} {vf:.{f}f}"
+      except Exception:
+        # Fall back to default string formatting for non-scalar or uncoercible values
         print_str += f" {k} {v}"
   return print_str
 
